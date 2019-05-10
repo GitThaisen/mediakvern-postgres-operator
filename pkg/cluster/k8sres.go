@@ -433,6 +433,7 @@ func generatePodTemplate(
 	initContainers []v1.Container,
 	sidecarContainers []v1.Container,
 	tolerationsSpec *[]v1.Toleration,
+	spiloFSGroup int64,
 	nodeAffinity *v1.Affinity,
 	terminateGracePeriod int64,
 	podServiceAccountName string,
@@ -446,6 +447,11 @@ func generatePodTemplate(
 	terminateGracePeriodSeconds := terminateGracePeriod
 	containers := []v1.Container{*spiloContainer}
 	containers = append(containers, sidecarContainers...)
+	securityContext := v1.PodSecurityContext{}
+
+	if spiloFSGroup != 0 {
+		securityContext.FSGroup = &spiloFSGroup
+	}
 
 	podSpec := v1.PodSpec{
 		ServiceAccountName:            podServiceAccountName,
@@ -453,6 +459,7 @@ func generatePodTemplate(
 		Containers:                    containers,
 		InitContainers:                initContainers,
 		Tolerations:                   *tolerationsSpec,
+		SecurityContext:               &securityContext,
 	}
 
 	if shmVolume {
@@ -837,6 +844,7 @@ func (c *Cluster) generateStatefulSet(spec *acidv1.PostgresSpec) (*v1beta1.State
 		spec.InitContainers,
 		sidecarContainers,
 		&tolerationSpec,
+		c.OpConfig.Resources.SpiloFSGroup,
 		nodeAffinity(c.OpConfig.NodeReadinessLabel),
 		int64(c.OpConfig.PodTerminateGracePeriod.Seconds()),
 		c.OpConfig.PodServiceAccountName,
